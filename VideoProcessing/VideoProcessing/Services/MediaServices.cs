@@ -162,18 +162,19 @@ namespace VideoProcessing.Services
             var body = new
             {
                 Name = name,
-                InputMediaAssets = new[] { new {
-                    __metadata = new {
-                        uri = inputAssetUri
+                InputMediaAssets = new[] {
+                    new {
+                        __metadata = new { uri = inputAssetUri }
                     }
-                }},
-                Tasks = new[] { new {
-                    Configuration = configuration,
-                    MediaProcessorId = mediaProcessorId,
-                    TaskBody = "<?xml version=\"1.0\" encoding=\"utf-8\"?><taskBody><inputAsset>JobInputAsset(0)</inputAsset><outputAsset>JobOutputAsset(0)</outputAsset></taskBody>"
-                }}
+                },
+                Tasks = new[] {
+                    new {
+                        Configuration = configuration,
+                        MediaProcessorId = mediaProcessorId,
+                        TaskBody = "<?xml version=\"1.0\" encoding=\"utf-8\"?><taskBody><inputAsset>JobInputAsset(0)</inputAsset><outputAsset>JobOutputAsset(0)</outputAsset></taskBody>"
+                    }
+                }
             };
-
 
             var bodyContent = JsonConvert.SerializeObject(body);
             var stringContent = new StringContent(bodyContent, Encoding.UTF8, "application/json");

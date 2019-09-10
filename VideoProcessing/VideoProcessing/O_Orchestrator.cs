@@ -20,6 +20,9 @@ namespace VideoProcessing
             // Call activity 1: Calling activity function which uploads the video into AMS storage, creates Asset and Locator
             var resultInitialSetup = await context.CallActivityAsync<InitialSetupResult>("A_InitialSetupGenerator", videoDto);
 
+            // Call activity 2: Calling activity function which encodes the video
+            var resultEncoding = await context.CallActivityAsync<string>("A_EncodeGenerator", resultInitialSetup);
+
             // Return a anonymous object with the information received
             return new
             {

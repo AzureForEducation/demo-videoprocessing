@@ -10,5 +10,6 @@ namespace VideoProcessing.Entities
     {
         public Asset Asset { get; set; }
         public Locator Locator { get; set; }
+        public VideoAMS Video { get; set; }
     }
 }

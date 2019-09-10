@@ -39,14 +39,6 @@ namespace VideoProcessing
 
             log.Info($"All set! Starting the orchestration process for {_videoFileName}...");
 
-            // DTO binding
-            //VideoAMS videoDto = new VideoAMS();
-            //videoDto.AccessPolicy = _accessPolicy;
-            //videoDto.AssetName = _assetName;
-            //videoDto.StorageAccountName = _storageAccountName;
-            //videoDto.VideoFileName = _videoFileName;
-            //videoDto.VideoPath = _videoPath;
-
             // Starting the orchestration process
             var orchestrationId = await starter.StartNewAsync("O_Orchestrator", videoModel);
 

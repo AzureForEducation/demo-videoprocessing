@@ -89,7 +89,8 @@ namespace VideoProcessing
 
             return new InitialSetupResult {
                 Asset = asset,
-                Locator = locator
+                Locator = locator,
+                Video = videoDto
             };
         }
     }
