@@ -10,6 +10,7 @@ using VideoProcessing.Entities;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage;
 
 namespace VideoProcessing.Services
 {
@@ -21,7 +22,7 @@ namespace VideoProcessing.Services
         private string _clientSecret;
         private HttpClient _httpClient;
 
-        public MediaServices(string tenantDomain, string restApiUrl, string clientId, string clientSecret)
+        public MediaServices(string tenantDomain, string restApiUrl, string clientId, string clientSecret, string storageConn)
         {
             _tenantDomain = tenantDomain;
             _restApiUrl = restApiUrl;
@@ -118,22 +119,26 @@ namespace VideoProcessing.Services
             };
         }
 
-        public async Task<CloudBlockBlob> MoveVideoToAssetLocator(CloudBlockBlob srcBlob, Locator locator, string srcFileName)
+        public async Task<CloudBlockBlob> MoveVideoToAssetLocator(CloudBlockBlob sourceBlob, Locator locator, string storageConn)
         {
+            // Defining URIs
             string destinationContainer = $"{locator.BaseUri}";
             Uri uriDestinationContainer = new Uri(destinationContainer, UriKind.Absolute);
-
-            CloudBlockBlob destBlob;
             CloudBlobContainer destContainer = new CloudBlobContainer(uriDestinationContainer);
 
-            //Copy source blob to destination container
-            string name = srcFileName;
-            destBlob = destContainer.GetBlockBlobReference(name);
-            await destBlob.StartCopyAsync(srcBlob);
+            // Interacting with the blob
+            string strgConn = storageConn;
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(strgConn);
+            CloudBlobClient cloudBlobClient = storageAccount.CreateCloudBlobClient();
+            CloudBlobContainer sourceContainer = cloudBlobClient.GetContainerReference("incoming-videos");
+            CloudBlobContainer targetContainer = cloudBlobClient.GetContainerReference(destContainer.Name);
+            CloudBlockBlob srcBlob = sourceContainer.GetBlockBlobReference(sourceBlob.Name);
+            CloudBlockBlob targetBlob = targetContainer.GetBlockBlobReference(sourceBlob.Name);
+            await targetBlob.StartCopyAsync(srcBlob);
 
-            //remove source blob after copy is done.
-            srcBlob.Delete();
-            return destBlob;
+            // Remove source blob after copy is done.
+            //sourceBlob.Delete();
+            return targetBlob;
         }
 
         public async Task<string> GenerateFileInfo(string assetId)

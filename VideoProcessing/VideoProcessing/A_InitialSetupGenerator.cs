@@ -29,6 +29,7 @@ namespace VideoProcessing
         static readonly string _restApiUrl = Environment.GetEnvironmentVariable("AMSRESTAPIEndpoint");
         static readonly string _clientId = Environment.GetEnvironmentVariable("AMSClientId");
         static readonly string _clientSecret = Environment.GetEnvironmentVariable("AMSClientSecret");
+        static readonly string _storageConnection = Environment.GetEnvironmentVariable("StorageAccountConnection");
 
         [FunctionName("A_InitialSetupGenerator")]
         public static async Task<object> GeneratesInitialSetup([ActivityTrigger] VideoAMS videoDto, TraceWriter log)
@@ -39,7 +40,7 @@ namespace VideoProcessing
             string accessPolicyId = "";
 
             // Getting the service authenticated
-            MediaServices mediaService = new MediaServices(_tenantDomain, restApiUrl: _restApiUrl, _clientId, _clientSecret);
+            MediaServices mediaService = new MediaServices(_tenantDomain, restApiUrl: _restApiUrl, _clientId, _clientSecret, _storageConnection);
             try
             {
                 await mediaService.InitializeAccessTokenAsync();
@@ -76,11 +77,10 @@ namespace VideoProcessing
                 // Moving file into the asset
                 CloudBlockBlob sourceBlob;
                 sourceBlob = new CloudBlockBlob(uriSource);
-                string sourceBlobName = sourceBlob.Uri.Segments.Last();
-                await mediaService.MoveVideoToAssetLocator(sourceBlob, locator, sourceBlobName);
+                await mediaService.MoveVideoToAssetLocator(sourceBlob, locator, _storageConnection);
                 await mediaService.GenerateFileInfo(asset.Id);
 
-                log.Info("Video upload... Done.");
+                log.Info("Moving video... Done.");
             }
             catch (Exception ex)
             {
