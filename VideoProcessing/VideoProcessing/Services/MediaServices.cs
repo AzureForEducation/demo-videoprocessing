@@ -9,6 +9,7 @@ using System.Web;
 using VideoProcessing.Entities;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Microsoft.WindowsAzure.Storage.Blob;
 
 namespace VideoProcessing.Services
 {
@@ -117,17 +118,22 @@ namespace VideoProcessing.Services
             };
         }
 
-        public async Task<string> UploadBlobToLocator(StreamContent stream, Locator locator, string uploadedFilename)
+        public async Task<CloudBlockBlob> MoveVideoToAssetLocator(CloudBlockBlob srcBlob, Locator locator, string srcFileName)
         {
-            stream.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+            string destinationContainer = $"{locator.BaseUri}";
+            Uri uriDestinationContainer = new Uri(destinationContainer, UriKind.Absolute);
 
-            HttpClient httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Add("x-ms-blob-type", "BlockBlob");
+            CloudBlockBlob destBlob;
+            CloudBlobContainer destContainer = new CloudBlobContainer(uriDestinationContainer);
 
-            string destinationUri = $"{locator.BaseUri}/{uploadedFilename}{locator.ContentAccessComponent}";
+            //Copy source blob to destination container
+            string name = srcFileName;
+            destBlob = destContainer.GetBlockBlobReference(name);
+            await destBlob.StartCopyAsync(srcBlob);
 
-            HttpResponseMessage httpResponseMessage = await httpClient.PutAsync(destinationUri, stream);
-            return await httpResponseMessage.Content.ReadAsStringAsync();
+            //remove source blob after copy is done.
+            srcBlob.Delete();
+            return destBlob;
         }
 
         public async Task<string> GenerateFileInfo(string assetId)

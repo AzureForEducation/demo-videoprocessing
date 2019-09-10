@@ -50,43 +50,41 @@ namespace VideoProcessing
                 return httpResponse.RequestMessage.CreateResponse(HttpStatusCode.Unauthorized, $"It wasn't possible get the service authenticated. \n {ex.StackTrace}");
             }
 
-            // Creating a new asset
+            // Creating asset and locator
             try
             {
+                // Creating the asset
                 accessPolicyId = await mediaService.GenerateAccessPolicy(videoDto.AccessPolicyName, 100, 2);
                 asset = await mediaService.GenerateAsset(videoDto.AssetName, videoDto.StorageAccountName);
                 log.Info("Asset creation... Done.");
+
+                // Creating the locator
+                locator = await mediaService.GenerateLocator(accessPolicyId, asset.Id, DateTime.Now.AddMinutes(-5), 1);
+                log.Info("Locator creation... Done.");
             }
             catch (Exception ex)
             {
                 return httpResponse.RequestMessage.CreateResponse(HttpStatusCode.InternalServerError, $"It wasn't possible to create the asset. \n {ex.StackTrace}");
             }
 
-            // Uploading the video into the asset
+            // Moving the original video into the asset
             try
             {
-                string videoPath = videoDto.VideoPath + videoDto.VideoFileName;
-                FileStream fileStream = new FileStream(videoPath, FileMode.Open);
-                StreamContent content = new StreamContent(fileStream);
+                // Converting string path into Uri
+                Uri uriSource = new Uri(videoDto.VideoPath, UriKind.Absolute);
 
-                await mediaService.UploadBlobToLocator(content, locator, videoDto.VideoFileName);
+                // Moving file into the asset
+                CloudBlockBlob sourceBlob;
+                sourceBlob = new CloudBlockBlob(uriSource);
+                string sourceBlobName = sourceBlob.Uri.Segments.Last();
+                await mediaService.MoveVideoToAssetLocator(sourceBlob, locator, sourceBlobName);
                 await mediaService.GenerateFileInfo(asset.Id);
+
                 log.Info("Video upload... Done.");
             }
             catch (Exception ex)
             {
                 return httpResponse.RequestMessage.CreateResponse(HttpStatusCode.InternalServerError, $"It wasn't possible to upload the video. \n {ex.StackTrace}");
-            }
-
-            // Creating locator
-            try
-            {
-                locator = await mediaService.GenerateLocator(accessPolicyId, asset.Id, DateTime.Now.AddMinutes(-5), 1);
-                log.Info("Locator creation... Done.");
-            }
-            catch (Exception ex)
-            {
-                return httpResponse.RequestMessage.CreateResponse(HttpStatusCode.InternalServerError, $"It wasn't possible to create the locator. \n {ex.StackTrace}");
             }
 
             return new InitialSetupResult {
