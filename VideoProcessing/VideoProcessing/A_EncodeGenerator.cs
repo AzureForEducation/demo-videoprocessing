@@ -25,16 +25,28 @@ namespace VideoProcessing
         static readonly string _storageConnection = Environment.GetEnvironmentVariable("StorageAccountConnection");
 
         [FunctionName("A_EncodeGenerator")]
-        public static async Task<object> GeneratesEncoder([ActivityTrigger] InitialSetupResult initialSetupResult,TraceWriter log)
+        public static async Task<object> GeneratesEncoder([ActivityTrigger] InitialSetupResult initialSetupResult, TraceWriter log)
         {
             MediaServices mediaService = new MediaServices(_tenantDomain, restApiUrl: _restApiUrl, _clientId, _clientSecret, _storageConnection);
             HttpResponseMessage httpResponse = new HttpResponseMessage();
             JToken result;
 
+            // Getting the function authenticated
+            try
+            {
+                await mediaService.InitializeAccessTokenAsync();
+            }
+            catch (Exception ex)
+            {
+                return httpResponse.RequestMessage.CreateResponse(HttpStatusCode.Unauthorized, $"It wasn't possible get the service authenticated. \n {ex.StackTrace}");
+            }
+
+            // Creating the encoding job
             try
             {
                 string mediaProcessorId = await mediaService.GetMediaProcessorId("Media Encoder Standard");
-                result = await mediaService.CreateJob($"Job - Media Enconder for { initialSetupResult.Video.VideoFileName }", initialSetupResult.Asset.Id, mediaProcessorId, "Adaptive Streaming");
+                result = await mediaService.CreateJob($"Job - Media Enconder for {initialSetupResult.Video.VideoFileName}", initialSetupResult.Asset.Uri, mediaProcessorId, "Adaptive Streaming");
+                log.Info("Encoding job started... Done.");
             }
             catch (Exception ex)
             {
