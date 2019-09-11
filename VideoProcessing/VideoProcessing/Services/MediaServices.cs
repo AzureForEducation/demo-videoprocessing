@@ -171,7 +171,7 @@ namespace VideoProcessing.Services
                     new {
                         Configuration = configuration,
                         MediaProcessorId = mediaProcessorId,
-                        TaskBody = "<?xml version=\"1.0\" encoding=\"utf-8\"?><taskBody><inputAsset>JobInputAsset(0)</inputAsset><outputAsset>JobOutputAsset(0)</outputAsset></taskBody>"
+                        TaskBody = $"<?xml version=\"1.0\" encoding=\"utf-8\"?><taskBody><inputAsset>JobInputAsset(0)</inputAsset><outputAsset>JobOutputAsset(0)</outputAsset></taskBody>"
                     }
                 }
             };

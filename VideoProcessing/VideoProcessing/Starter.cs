@@ -16,11 +16,7 @@ namespace VideoProcessing
         [FunctionName("Starter")]
         public static async Task<HttpResponseMessage> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)]HttpRequestMessage req, [OrchestrationClient] DurableOrchestrationClient starter, TraceWriter log)
         {
-            // Parsing query parameter
-            //string video = req.GetQueryNameValuePairs().FirstOrDefault(q => string.Compare(q.Key, "video", true) == 0).Value;
-
-            // Reads the request body
-            //dynamic data = await req.Content.ReadAsAsync<VideoAMS>();
+            // Reading call's body and typing it
             string json = await req.Content.ReadAsStringAsync();
             var videoModel = JsonConvert.DeserializeObject<VideoAMS>(json);
 

@@ -24,7 +24,7 @@ namespace VideoProcessing
             // Call activity 2: Calling activity function which encodes the video
             var resultEncoding = await context.CallActivityAsync<string>("A_EncodeGenerator", resultInitialSetup);
 
-            // Return a anonymous object with the information received
+            // Return a anonymous object based upon the information received back from the orchestration process
             return new
             {
                 _asset = resultInitialSetup.Asset,

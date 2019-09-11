@@ -45,7 +45,7 @@ namespace VideoProcessing
             try
             {
                 string mediaProcessorId = await mediaService.GetMediaProcessorId("Media Encoder Standard");
-                result = await mediaService.CreateJob($"Job - Media Enconder for {initialSetupResult.Video.VideoFileName}", initialSetupResult.Asset.Uri, mediaProcessorId, "Adaptive Streaming");
+                result = await mediaService.CreateJob($"Encoding_{initialSetupResult.Video.VideoFileName}", initialSetupResult.Asset.Uri, mediaProcessorId, "Adaptive Streaming");
                 log.Info("Encoding job started... Done.");
             }
             catch (Exception ex)
