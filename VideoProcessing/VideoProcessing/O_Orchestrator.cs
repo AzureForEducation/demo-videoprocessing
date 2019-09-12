@@ -22,13 +22,18 @@ namespace VideoProcessing
             var resultInitialSetup = await context.CallActivityAsync<InitialSetupResult>("A_InitialSetupGenerator", videoDto);
 
             // Call activity 2: Calling activity function which encodes the video
-            var resultEncoding = await context.CallActivityAsync<string>("A_EncodeGenerator", resultInitialSetup);
+            var resultEncoding = await context.CallActivityAsync<object>("A_EncodeGenerator", resultInitialSetup);
+
+            // Call activity 3: Calling activity function which indexes the video
+            var resultIndexer = await context.CallActivityAsync<bool>("A_SubtitlesGenerator", resultInitialSetup);
 
             // Return a anonymous object based upon the information received back from the orchestration process
             return new
             {
                 _asset = resultInitialSetup.Asset,
-                _locator = resultInitialSetup.Locator
+                _locator = resultInitialSetup.Locator,
+                _encoding = resultEncoding,
+                _indexer = resultIndexer
             };
         }
     }

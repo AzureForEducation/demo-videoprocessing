@@ -11,6 +11,9 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Microsoft.WindowsAzure.Storage.Blob;
 using Microsoft.WindowsAzure.Storage;
+using Microsoft.WindowsAzure.MediaServices.Client;
+using System.IO;
+using System.Threading;
 
 namespace VideoProcessing.Services
 {
@@ -171,7 +174,7 @@ namespace VideoProcessing.Services
                     new {
                         Configuration = configuration,
                         MediaProcessorId = mediaProcessorId,
-                        TaskBody = $"<?xml version=\"1.0\" encoding=\"utf-8\"?><taskBody><inputAsset>JobInputAsset(0)</inputAsset><outputAsset>JobOutputAsset(0)</outputAsset></taskBody>"
+                        TaskBody = "<?xml version=\"1.0\" encoding=\"utf-8\"?><taskBody><inputAsset>JobInputAsset(0)</inputAsset><outputAsset>JobOutputAsset(0)</outputAsset></taskBody>"
                     }
                 }
             };
@@ -184,6 +187,37 @@ namespace VideoProcessing.Services
 
             var obj = JObject.Parse(responseContent);
             return obj["d"];
+        }
+
+        public static IAsset LoadExistingAsset(string AssetId, CloudMediaContext _context)
+        {
+            var matchingAssets = (from a in _context.Assets where a.Id.Equals(AssetId) select a);
+
+            IAsset asset = null;
+            foreach (IAsset ia in matchingAssets)
+            {
+                asset = ia;
+            }
+
+            return asset;
+        }
+
+        public static void DownloadAsset(IAsset asset, string outputDirectory, CloudMediaContext _context)
+        {
+            foreach (IAssetFile file in asset.AssetFiles)
+            {
+                file.Download(Path.Combine(outputDirectory, file.Name));
+            }
+        }
+
+        public static IMediaProcessor GetLatestMediaProcessorByName(string mediaProcessorName, CloudMediaContext _context)
+        {
+            var processor = _context.MediaProcessors.Where(p => p.Name == mediaProcessorName).ToList().OrderBy(p => new Version(p.Version)).LastOrDefault();
+
+            if (processor == null)
+                throw new ArgumentException(string.Format("Unknown media processor", mediaProcessorName));
+
+            return processor;
         }
     }
 }
