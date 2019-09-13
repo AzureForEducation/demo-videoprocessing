@@ -14,6 +14,10 @@ using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.MediaServices.Client;
 using System.IO;
 using System.Threading;
+using Microsoft.WindowsAzure.Storage.Queue;
+using System.Runtime.Serialization.Json;
+using Microsoft.Azure.WebJobs.Host;
+using Microsoft.WindowsAzure.Storage.Auth;
 
 namespace VideoProcessing.Services
 {
@@ -23,7 +27,8 @@ namespace VideoProcessing.Services
         private string _restApiUrl;
         private string _clientId;
         private string _clientSecret;
-        private HttpClient _httpClient;
+        public HttpClient _httpClient;
+        public static CloudStorageAccount _destinationStorageAccount;
 
         public MediaServices(string tenantDomain, string restApiUrl, string clientId, string clientSecret, string storageConn)
         {
@@ -122,7 +127,7 @@ namespace VideoProcessing.Services
             };
         }
 
-        public async Task<CloudBlockBlob> MoveVideoToAssetLocator(CloudBlockBlob sourceBlob, Locator locator, string storageConn)
+        public static async Task<CloudBlockBlob> MoveVideoToAssetLocator(CloudBlockBlob sourceBlob, Locator locator, string storageConn)
         {
             // Defining URIs
             string destinationContainer = $"{locator.BaseUri}";
@@ -189,6 +194,204 @@ namespace VideoProcessing.Services
             return obj["d"];
         }
 
+        ////////////////////////////////////////////////////////////// NEW VERSION ////////////////////////////////////////////////////////////////////////////////////
+
+        public static async Task<IJob> SubmitEncodingJobWithNotificationEndPoint(CloudMediaContext _context, string mediaProcessorName, InitialSetupResult initialSetup, INotificationEndPoint _notificationEndPoint)
+        {
+            // Declare a new job.
+            IJob job = _context.Jobs.Create($"Job_Encoding_{initialSetup.Video.VideoFileName}");
+
+            //Create an encrypted asset and upload the mp4
+            IAsset asset = LoadExistingAsset(initialSetup.Asset.Id, _context);
+
+            // Get a media processor reference, and pass to it the name of the
+            // processor to use for the specific task.
+            IMediaProcessor processor = GetLatestMediaProcessorByName(mediaProcessorName, _context);
+
+            // Create a task with the conversion details, using a configuration file.
+            ITask task = job.Tasks.AddNew($"Job_Encoding_Task_{initialSetup.Video.VideoFileName}", processor, "Adaptive Streaming", Microsoft.WindowsAzure.MediaServices.Client.TaskOptions.None);
+
+            // Specify the input asset to be encoded.
+            task.InputAssets.Add(asset);
+
+            // Add an output asset to contain the results of the job.
+            task.OutputAssets.AddNew($"Output_Encoding_{initialSetup.Video.VideoFileName}", AssetCreationOptions.None);
+
+            // Add a notification point to the job. You can add multiple notification points.  
+            job.JobNotificationSubscriptions.AddNew(NotificationJobState.FinalStatesOnly, _notificationEndPoint);
+
+            job.Submit();
+
+            return job;
+        }
+
+        public static CloudQueue CreateQueue(string storageAccountConnectionString, string endPointAddress)
+        {
+            CloudStorageAccount storageAccount = CloudStorageAccount.Parse(storageAccountConnectionString);
+
+            // Create the queue client
+            CloudQueueClient queueClient = storageAccount.CreateCloudQueueClient();
+
+            // Retrieve a reference to a queue
+            CloudQueue queue = queueClient.GetQueueReference(endPointAddress);
+
+            // Create the queue if it doesn't already exist
+            queue.CreateIfNotExists();
+
+            return queue;
+        }
+
+        public static void WaitForJobToReachedFinishedState(string jobId, CloudQueue _queue)
+        {
+            int expectedState = (int)JobState.Finished;
+            int timeOutInSeconds = 600;
+
+            bool jobReachedExpectedState = false;
+            DateTime startTime = DateTime.Now;
+            int jobState = -1;
+
+            while (!jobReachedExpectedState)
+            {
+                // Specify how often you want to get messages from the queue.
+                Thread.Sleep(TimeSpan.FromSeconds(10));
+
+                foreach (var message in _queue.GetMessages(10))
+                {
+                    using (Stream stream = new MemoryStream(message.AsBytes))
+                    {
+                        DataContractJsonSerializerSettings settings = new DataContractJsonSerializerSettings();
+                        settings.UseSimpleDictionaryFormat = true;
+                        DataContractJsonSerializer ser = new DataContractJsonSerializer(typeof(EncodingJobMessage), settings);
+                        EncodingJobMessage encodingJobMsg = (EncodingJobMessage)ser.ReadObject(stream);
+
+                        Console.WriteLine();
+
+                        // Display the message information.
+                        Console.WriteLine("EventType: {0}", encodingJobMsg.EventType);
+                        Console.WriteLine("MessageVersion: {0}", encodingJobMsg.MessageVersion);
+                        Console.WriteLine("ETag: {0}", encodingJobMsg.ETag);
+                        Console.WriteLine("TimeStamp: {0}", encodingJobMsg.TimeStamp);
+                        foreach (var property in encodingJobMsg.Properties)
+                        {
+                            Console.WriteLine("    {0}: {1}", property.Key, property.Value);
+                        }
+
+                        // We are only interested in messages
+                        // where EventType is "JobStateChange".
+                        if (encodingJobMsg.EventType == "JobStateChange")
+                        {
+                            string JobId = (String)encodingJobMsg.Properties.Where(j => j.Key == "JobId").FirstOrDefault().Value;
+                            if (JobId == jobId)
+                            {
+                                string oldJobStateStr = (String)encodingJobMsg.Properties.Where(j => j.Key == "OldState").FirstOrDefault().Value;
+                                string newJobStateStr = (String)encodingJobMsg.Properties.Where(j => j.Key == "NewState").FirstOrDefault().Value;
+
+                                JobState oldJobState = (JobState)Enum.Parse(typeof(JobState), oldJobStateStr);
+                                JobState newJobState = (JobState)Enum.Parse(typeof(JobState), newJobStateStr);
+
+                                if (newJobState == (JobState)expectedState)
+                                {
+                                    Console.WriteLine("job with Id: {0} reached expected state: {1}",
+                                        jobId, newJobState);
+                                    jobReachedExpectedState = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    // Delete the message after we've read it.
+                    _queue.DeleteMessage(message);
+                }
+
+                // Wait until timeout
+                TimeSpan timeDiff = DateTime.Now - startTime;
+                bool timedOut = (timeDiff.TotalSeconds > timeOutInSeconds);
+                if (timedOut)
+                {
+                    Console.WriteLine(@"Timeout for checking job notification messages, latest found state ='{0}', wait time = {1} secs", jobState, timeDiff.TotalSeconds);
+
+                    throw new TimeoutException();
+                }
+            }
+        }
+
+        public static async Task<IAsset> CreateAssetFromBlobAsync(CloudBlockBlob blob, string assetName, TraceWriter log, string _storageAccountName, string _storageAccountKey, CloudMediaContext _context)
+        {
+            //Get a reference to the storage account that is associated with the Media Services account
+            StorageCredentials mediaServicesStorageCredentials = new StorageCredentials(_storageAccountName, _storageAccountKey);
+            _destinationStorageAccount = new CloudStorageAccount(mediaServicesStorageCredentials, false);
+
+            // Create a new asset
+            var asset = _context.Assets.Create(blob.Name, AssetCreationOptions.None);
+            log.Info($"Creating asset {asset.Name}...");
+
+            // Creates access policy, locator and destination blob
+            IAccessPolicy writePolicy = _context.AccessPolicies.Create("writePolicy", TimeSpan.FromHours(4), AccessPermissions.Write);
+            ILocator destinationLocator = _context.Locators.CreateLocator(LocatorType.Sas, asset, writePolicy);
+            CloudBlobClient destBlobStorage = _destinationStorageAccount.CreateCloudBlobClient();
+
+            // Get the destination asset container reference
+            string destinationContainerName = (new Uri(destinationLocator.Path)).Segments[1];
+            CloudBlobContainer assetContainer = destBlobStorage.GetContainerReference(destinationContainerName);
+
+            try
+            {
+                assetContainer.CreateIfNotExists();
+            }
+            catch (Exception ex)
+            {
+                log.Error("ERROR:" + ex.Message);
+            }
+
+            log.Info("Done. Asset created.");
+
+            // Get hold of the destination blob
+            CloudBlockBlob destinationBlob = assetContainer.GetBlockBlobReference(blob.Name);
+
+            // Copy Blob
+            try
+            {
+                log.Info("Starting copying the video file into the asset blob...");
+
+                using (var stream = await blob.OpenReadAsync())
+                {
+                    await destinationBlob.UploadFromStreamAsync(stream);
+                }
+
+                log.Info("Done. Copy complete.");
+
+                var assetFile = asset.AssetFiles.Create(blob.Name);
+                assetFile.ContentFileSize = blob.Properties.Length;
+                //assetFile.MimeType = "video/mp4";
+                assetFile.IsPrimary = true;
+                assetFile.Update();
+                asset.Update();
+            }
+            catch (Exception ex)
+            {
+                log.Error(ex.Message);
+                log.Info(ex.StackTrace);
+                log.Info("Copy Failed.");
+                throw;
+            }
+
+            destinationLocator.Delete();
+            writePolicy.Delete();
+
+            return asset;
+        }
+
+        public static IMediaProcessor GetLatestMediaProcessorByName(string mediaProcessorName, CloudMediaContext _context)
+        {
+            var processor = _context.MediaProcessors.Where(p => p.Name == mediaProcessorName).
+                ToList().OrderBy(p => new Version(p.Version)).LastOrDefault();
+
+            if (processor == null)
+                throw new ArgumentException(string.Format("Unknown media processor", mediaProcessorName));
+
+            return processor;
+        }
+
         public static IAsset LoadExistingAsset(string AssetId, CloudMediaContext _context)
         {
             var matchingAssets = (from a in _context.Assets where a.Id.Equals(AssetId) select a);
@@ -210,14 +413,27 @@ namespace VideoProcessing.Services
             }
         }
 
-        public static IMediaProcessor GetLatestMediaProcessorByName(string mediaProcessorName, CloudMediaContext _context)
+        public static string PublishAndBuildStreamingURLs(String jobID, CloudMediaContext _context, InitialSetupResult initialSetup)
         {
-            var processor = _context.MediaProcessors.Where(p => p.Name == mediaProcessorName).ToList().OrderBy(p => new Version(p.Version)).LastOrDefault();
+            IJob job = _context.Jobs.Where(j => j.Id == jobID).FirstOrDefault();
+            IAsset asset = job.OutputMediaAssets.FirstOrDefault();
 
-            if (processor == null)
-                throw new ArgumentException(string.Format("Unknown media processor", mediaProcessorName));
+            // Create a 30-day readonly access policy. 
+            // You cannot create a streaming locator using an AccessPolicy that includes write or delete permissions.
+            IAccessPolicy policy = _context.AccessPolicies.Create(initialSetup.Video.VideoFileName, TimeSpan.FromDays(30), AccessPermissions.Read);
 
-            return processor;
+            // Create a locator to the streaming content on an origin. 
+            ILocator originLocator = _context.Locators.CreateLocator(LocatorType.OnDemandOrigin, asset, policy, DateTime.UtcNow.AddMinutes(-5));
+
+            // Get a reference to the streaming manifest file from the  
+            // collection of files in the asset. 
+            var manifestFile = asset.AssetFiles.ToList().Where(f => f.Name.ToLower().EndsWith(".ism")).FirstOrDefault();
+
+            // Create a full URL to the manifest file. Use this for playback
+            // in streaming media clients. 
+            string urlForClientStreaming = originLocator.Path + manifestFile.Name + "/manifest" + "(format=m3u8-aapl)";
+            return urlForClientStreaming;
+
         }
     }
 }

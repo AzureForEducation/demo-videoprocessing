@@ -77,7 +77,7 @@ namespace VideoProcessing
                 // Moving file into the asset
                 CloudBlockBlob sourceBlob;
                 sourceBlob = new CloudBlockBlob(uriSource);
-                await mediaService.MoveVideoToAssetLocator(sourceBlob, locator, _storageConnection);
+                await MediaServices.MoveVideoToAssetLocator(sourceBlob, locator, _storageConnection);
                 await mediaService.GenerateFileInfo(asset.Id);
 
                 log.Info("Moving video... Done.");

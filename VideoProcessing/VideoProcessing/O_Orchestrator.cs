@@ -1,5 +1,6 @@
 ﻿using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Host;
+using Microsoft.WindowsAzure.MediaServices.Client;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
@@ -21,20 +22,28 @@ namespace VideoProcessing
             // Call activity 1: Calling activity function which uploads the video into AMS storage, creates Asset and Locator
             var resultInitialSetup = await context.CallActivityAsync<InitialSetupResult>("A_InitialSetupGenerator", videoDto);
 
-            // Call activity 2: Calling activity function which encodes the video
-            var resultEncoding = await context.CallActivityAsync<object>("A_EncodeGenerator", resultInitialSetup);
+            // Call activity 2: Calling activity function which asynchronously creates an encoding job
+            var resultEncoding = await context.CallActivityAsync<bool>("A_JobEncodingGenerator", resultInitialSetup);
+
+            // Call activity 3: Calling the activity function which asynchronously listen a job notification webhook and publishes the content at the end
+            //var statusEncodingPublishing = await context.CallActivityAsync<bool>("A_PublishesEncodedAsset", resultInitialSetup);
 
             // Call activity 3: Calling activity function which indexes the video
-            var resultIndexer = await context.CallActivityAsync<bool>("A_SubtitlesGenerator", resultInitialSetup);
+            //var resultIndexer = await context.CallActivityAsync<bool>("A_SubtitlesGenerator", resultInitialSetup);
 
-            // Return a anonymous object based upon the information received back from the orchestration process
-            return new
+            if(resultInitialSetup != null)
             {
-                _asset = resultInitialSetup.Asset,
-                _locator = resultInitialSetup.Locator,
-                _encoding = resultEncoding,
-                _indexer = resultIndexer
-            };
+                return new InitialSetupResult
+                {
+                    Asset = resultInitialSetup.Asset,
+                    Locator = resultInitialSetup.Locator,
+                    Video = videoDto
+                };
+            }
+            else
+            {
+                return null;
+            }
         }
     }
 }
