@@ -196,7 +196,7 @@ namespace VideoProcessing.Services
 
         ////////////////////////////////////////////////////////////// NEW VERSION ////////////////////////////////////////////////////////////////////////////////////
 
-        public static async Task<IJob> SubmitEncodingJobWithNotificationEndPoint(CloudMediaContext _context, string mediaProcessorName, InitialSetupResult initialSetup, INotificationEndPoint _notificationEndPoint)
+        public static IJob SubmitEncodingJobWithNotificationEndPoint(CloudMediaContext _context, string mediaProcessorName, InitialSetupResult initialSetup, INotificationEndPoint _notificationEndPoint)
         {
             // Declare a new job.
             IJob job = _context.Jobs.Create($"Job_Encoding_{initialSetup.Video.VideoFileName}");
@@ -241,10 +241,10 @@ namespace VideoProcessing.Services
             return queue;
         }
 
-        public static void WaitForJobToReachedFinishedState(string jobId, CloudQueue _queue)
+        public static void WaitForJobToReachedFinishedState(string jobId, CloudQueue _queue, TraceWriter log)
         {
             int expectedState = (int)JobState.Finished;
-            int timeOutInSeconds = 600;
+            int timeOutInSeconds = 60000;
 
             bool jobReachedExpectedState = false;
             DateTime startTime = DateTime.Now;
@@ -264,16 +264,16 @@ namespace VideoProcessing.Services
                         DataContractJsonSerializer ser = new DataContractJsonSerializer(typeof(EncodingJobMessage), settings);
                         EncodingJobMessage encodingJobMsg = (EncodingJobMessage)ser.ReadObject(stream);
 
-                        Console.WriteLine();
+                        log.Info("");
 
                         // Display the message information.
-                        Console.WriteLine("EventType: {0}", encodingJobMsg.EventType);
-                        Console.WriteLine("MessageVersion: {0}", encodingJobMsg.MessageVersion);
-                        Console.WriteLine("ETag: {0}", encodingJobMsg.ETag);
-                        Console.WriteLine("TimeStamp: {0}", encodingJobMsg.TimeStamp);
+                        log.Info("EventType: {0}", encodingJobMsg.EventType);
+                        log.Info("MessageVersion: {0}", encodingJobMsg.MessageVersion);
+                        log.Info("ETag: {0}", encodingJobMsg.ETag);
+                        log.Info("TimeStamp: {0}", encodingJobMsg.TimeStamp);
                         foreach (var property in encodingJobMsg.Properties)
                         {
-                            Console.WriteLine("    {0}: {1}", property.Key, property.Value);
+                            log.Info($"    {property.Key}: {property.Value}");
                         }
 
                         // We are only interested in messages
@@ -291,8 +291,7 @@ namespace VideoProcessing.Services
 
                                 if (newJobState == (JobState)expectedState)
                                 {
-                                    Console.WriteLine("job with Id: {0} reached expected state: {1}",
-                                        jobId, newJobState);
+                                    log.Info($"job with Id: {jobId} reached expected state: {newJobState}");
                                     jobReachedExpectedState = true;
                                     break;
                                 }
@@ -308,7 +307,7 @@ namespace VideoProcessing.Services
                 bool timedOut = (timeDiff.TotalSeconds > timeOutInSeconds);
                 if (timedOut)
                 {
-                    Console.WriteLine(@"Timeout for checking job notification messages, latest found state ='{0}', wait time = {1} secs", jobState, timeDiff.TotalSeconds);
+                    log.Info($"Timeout for checking job notification messages, latest found state ='{jobState}', wait time = {timeDiff.TotalSeconds} secs");
 
                     throw new TimeoutException();
                 }
@@ -413,27 +412,36 @@ namespace VideoProcessing.Services
             }
         }
 
-        public static string PublishAndBuildStreamingURLs(String jobID, CloudMediaContext _context, InitialSetupResult initialSetup)
+        public static string PublishAndBuildStreamingURLs(String jobID, CloudMediaContext _context)
         {
-            IJob job = _context.Jobs.Where(j => j.Id == jobID).FirstOrDefault();
-            IAsset asset = job.OutputMediaAssets.FirstOrDefault();
+            string urlForClientStreaming;
 
-            // Create a 30-day readonly access policy. 
-            // You cannot create a streaming locator using an AccessPolicy that includes write or delete permissions.
-            IAccessPolicy policy = _context.AccessPolicies.Create(initialSetup.Video.VideoFileName, TimeSpan.FromDays(30), AccessPermissions.Read);
+            try
+            {
+                IJob job = _context.Jobs.Where(j => j.Id == jobID).FirstOrDefault();
+                IAsset asset = job.OutputMediaAssets.FirstOrDefault();
 
-            // Create a locator to the streaming content on an origin. 
-            ILocator originLocator = _context.Locators.CreateLocator(LocatorType.OnDemandOrigin, asset, policy, DateTime.UtcNow.AddMinutes(-5));
+                // Create a 30-day readonly access policy. 
+                // You cannot create a streaming locator using an AccessPolicy that includes write or delete permissions.
+                IAccessPolicy policy = _context.AccessPolicies.Create($"{asset.Name}_Streaming_Policy", TimeSpan.FromDays(30), AccessPermissions.Read);
 
-            // Get a reference to the streaming manifest file from the  
-            // collection of files in the asset. 
-            var manifestFile = asset.AssetFiles.ToList().Where(f => f.Name.ToLower().EndsWith(".ism")).FirstOrDefault();
+                // Create a locator to the streaming content on an origin. 
+                ILocator originLocator = _context.Locators.CreateLocator(LocatorType.OnDemandOrigin, asset, policy, DateTime.UtcNow.AddMinutes(-5));
 
-            // Create a full URL to the manifest file. Use this for playback
-            // in streaming media clients. 
-            string urlForClientStreaming = originLocator.Path + manifestFile.Name + "/manifest" + "(format=m3u8-aapl)";
+                // Get a reference to the streaming manifest file from the  
+                // collection of files in the asset. 
+                var manifestFile = asset.AssetFiles.ToList().Where(f => f.Name.ToLower().EndsWith(".ism")).FirstOrDefault();
+
+                // Create a full URL to the manifest file. Use this for playback
+                // in streaming media clients. 
+                urlForClientStreaming = asset.Uri + manifestFile.Name + "/manifest" + "(format=m3u8-aapl)";
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+
             return urlForClientStreaming;
-
         }
     }
 }

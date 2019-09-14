@@ -20,58 +20,33 @@ namespace VideoProcessing
         static readonly string _restApiUrl = Environment.GetEnvironmentVariable("AMSRESTAPIEndpoint");
         static readonly string _clientId = Environment.GetEnvironmentVariable("AMSClientId");
         static readonly string _clientSecret = Environment.GetEnvironmentVariable("AMSClientSecret");
-        static readonly string _storageConnection = Environment.GetEnvironmentVariable("StorageAccountConnection");
 
         // AMS and storage constants
         private static CloudMediaContext _context = null;
-        private static CloudQueue _queue = null;
-        private static INotificationEndPoint _notificationEndPoint = null;
 
         [FunctionName("A_PublishesEncodedAsset")]
-        public static async Task<bool> PublishesEncodedAsset([ActivityTrigger] InitialSetupResult initialSetupResult, TraceWriter log)
+        public static async Task<string> PublishesEncodedAsset([ActivityTrigger] string resultEncoding, TraceWriter log)
         {
-            IJob job;
-
-            // Generating endpoint address
-            string endPointAddress = Guid.NewGuid().ToString();
-            
-            // Converting string path into Uri
-            Uri uriSource = new Uri(initialSetupResult.Video.VideoPath, UriKind.Absolute);
-            
-            // Moving file into the asset
-            CloudBlockBlob sourceBlob;
-            sourceBlob = new CloudBlockBlob(uriSource);
-
             // Step 1: Create the context
             AzureAdTokenCredentials tokenCredentials = new AzureAdTokenCredentials(_tenantDomain, new AzureAdClientSymmetricKey(_clientId, _clientSecret), AzureEnvironments.AzureCloudEnvironment);
             var tokenProvider = new AzureAdTokenProvider(tokenCredentials);
             _context = new CloudMediaContext(new Uri(_restApiUrl), tokenProvider);
+            string streamingUrl;
 
-            // Step 2: Create the queue that will be receiving the notification messages
-            _queue = MediaServices.CreateQueue(_storageConnection, endPointAddress);
-
-            // Step 3: Create the notification point that is mapped to the queue
-            _notificationEndPoint = _context.NotificationEndPoints.Create(Guid.NewGuid().ToString(), NotificationEndPointType.AzureQueue, endPointAddress);
-
-
-            if (_notificationEndPoint != null)
+            // Step 2: Builds the streaming url for the encoded and published asset
+            try
             {
-                job = await MediaServices.SubmitEncodingJobWithNotificationEndPoint(_context, "Media Encoder Standard", initialSetupResult, _notificationEndPoint);
-                MediaServices.WaitForJobToReachedFinishedState(job.Id, _queue);
+                log.Info("Publishing the asset and building up the streaming url...");
+                streamingUrl = MediaServices.PublishAndBuildStreamingURLs(resultEncoding, _context); ;
+                log.Info("Done. Asset published.");
+                log.Info($"Public URL: {streamingUrl}");
             }
-            else
+            catch (Exception)
             {
-                return false;
+                return string.Empty;
             }
 
-            // Step 4: Publishes the asset and returns the streaming URL
-            string urlStreaming = MediaServices.PublishAndBuildStreamingURLs(job.Id, _context, initialSetupResult);
-
-            // Step 5: Clean up notification queue and endpoint
-            _queue.Delete();
-            _notificationEndPoint.Delete();
-
-            return true;
+            return streamingUrl;
         }
     }
 }

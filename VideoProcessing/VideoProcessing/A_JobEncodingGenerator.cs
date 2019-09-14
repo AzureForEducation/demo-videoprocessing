@@ -31,11 +31,9 @@ namespace VideoProcessing
         private static CloudMediaContext _context = null;
 
         [FunctionName("A_JobEncodingGenerator")]
-        public static async Task<object> GeneratesEncoder([ActivityTrigger] InitialSetupResult initialSetupResult, TraceWriter log)
+        public static string GeneratesEncoder([ActivityTrigger] InitialSetupResult initialSetupResult, TraceWriter log)
         {
-            MediaServices mediaService = new MediaServices(_tenantDomain, restApiUrl: _restApiUrl, _clientId, _clientSecret, _storageConnection);
-            HttpResponseMessage httpResponse = new HttpResponseMessage();
-            //JToken result;
+            IJob job;
 
             // Step 1: Setting up queue, context and endpoint
             string endPointAddress = Guid.NewGuid().ToString();
@@ -53,17 +51,17 @@ namespace VideoProcessing
             // Step 2: Creating the encoding job
             try
             {
-                log.Info("Starting encode job...");
+                log.Info("Starting encoding job...");
                 IMediaProcessor mediaProcessor = MediaServices.GetLatestMediaProcessorByName("Media Encoder Standard", _context);
-                var job = await MediaServices.SubmitEncodingJobWithNotificationEndPoint(_context, mediaProcessor.Name, initialSetupResult, _notificationEndPoint);
-                log.Info("Done. Encoding job sucessfuly scheduled.");
+                job = MediaServices.SubmitEncodingJobWithNotificationEndPoint(_context, mediaProcessor.Name, initialSetupResult, _notificationEndPoint);
+                log.Info("Done. Encoding job successfuly scheduled.");
 
                 log.Info("Waiting the encoding process get completed...");
-                MediaServices.WaitForJobToReachedFinishedState(job.Id, _queue);
+                MediaServices.WaitForJobToReachedFinishedState(job.Id, _queue, log);
             }
             catch (Exception ex)
             {
-                return false;
+                return string.Empty;
             }
 
             log.Info("Done. Encoding completed.");
@@ -73,7 +71,7 @@ namespace VideoProcessing
             _notificationEndPoint.Delete();
 
             // Step 4: Returns the final result
-            return true;
+            return job.Id;
         }
     }
 }
