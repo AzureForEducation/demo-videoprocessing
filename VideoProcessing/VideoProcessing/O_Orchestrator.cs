@@ -23,7 +23,7 @@ namespace VideoProcessing
             // Holding the video location through the context
             var videoDto = context.GetInput<VideoAMS>();
             InitialSetupResult resultInitialSetup;
-            string resultEncoding, resultPublishing;
+            string resultEncoding, resultPublishing, resultInsights;
 
             try
             {
@@ -45,11 +45,18 @@ namespace VideoProcessing
 
                 resultPublishing = await context.CallActivityAsync<string>("A_PublishesEncodedAsset", resultEncoding);
 
+                if (!context.IsReplaying)
+                    log.Info("Extracting insights...");
+
+                resultInsights = await context.CallActivityAsync<string>("A_InsightsGenerator", resultInitialSetup);
+
+                // Finishes the flow by returning the info object
                 return new 
                 {
                     _Asset = resultInitialSetup.Asset,
                     _Locator = resultInitialSetup.Locator,
-                    _Video = videoDto
+                    _Video = videoDto,
+                    _URLStreaming = resultPublishing
                 };
             }
             catch (Exception ex)
