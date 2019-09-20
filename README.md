@@ -48,3 +48,7 @@ At the end, your Logic App flow should look like that one presented by the Figur
 
 ![Logic App Starter general view](https://raw.githubusercontent.com/AzureForEducation/demo-videoprocessing/master/images/logicapp-starter-view.PNG)
 
+Where:
+
+* The first action defines both a connection with the storage account and determines the container which events will be listen from.
+
