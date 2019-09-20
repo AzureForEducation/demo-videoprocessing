@@ -50,5 +50,22 @@ At the end, your Logic App flow should look like that one presented by the Figur
 
 Where:
 
-* The first action defines both a connection with the storage account and determines the container which events will be listen from.
+1. The first action defines both a connection with the storage account and determines the container which events will be listen from. Please, see the Figure below.
 
+![Setting up the communication with storage account](https://raw.githubusercontent.com/AzureForEducation/demo-videoprocessing/master/images/logicapp-starter-block1.PNG)
+
+2. The second action calls a regular Azure Function passing some dynamic information on the body, as you can see through the image below.
+
+![Calling the starter Function](https://raw.githubusercontent.com/AzureForEducation/demo-videoprocessing/master/images/logicapp-starter-block2.PNG)
+
+3. At the end, the Logic App then collects the results retuned by the orchestration function, and finally, drops an email to the configured recipient notifying it about the conclusion of the process.
+
+![Configuring email dispatch](https://raw.githubusercontent.com/AzureForEducation/demo-videoprocessing/master/images/logicapp-starter-block3.PNG)
+
+### Step 4: Publish the function code into Azure
+
+There are several ways by which you could publish this code into Azure like, setting up continous integration over Azure DevOps, FTP, and so forth. For test purposes tough, the easiest way to get there is publishing directly from Visual Studio.
+
+
+
+> NOTE: Because the entire flow can take several minutes and considering that Functions running under Consumption Plan are limited to 10 minutes max before it returns time-out, I strongly recommend deploy it into a Function running under a regular hosting plan. [In here](https://docs.microsoft.com/en-us/azure/azure-functions/functions-scale) you can learn more about this constraint.
