@@ -46,3 +46,5 @@ As mentioned before, the solution utilizes a logic app to actually listen the ev
 
 At the end, your Logic App flow should look like that one presented by the Figure below.
 
+![Logic App Starter general view](https://raw.githubusercontent.com/AzureForEducation/demo-videoprocessing/master/images/logicapp-starter-view.PNG)
+
