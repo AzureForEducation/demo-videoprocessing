@@ -37,3 +37,12 @@ After have it created, add a new private container called "incoming-videos".
 ### Step 2: Azure Media Services (AMS)
 
 Create a new Azure Media Services Account (there is a very nice tutorial [in here](https://docs.microsoft.com/en-us/azure/media-services/previous/media-services-portal-create-account) on how to do it). Don't forget to tie up the storage account just created with this AMS account.
+
+After its creation, don't forget to enable the "Streaming Endpoint" for the account or you wouldn't be able to see the actual result of the flow: videos being played.
+
+### Step 3: Logic App creation
+
+As mentioned before, the solution utilizes a logic app to actually listen the events occurring within the storage account and react to those. So, you need to go after it. [In here](https://docs.microsoft.com/en-us/azure/logic-apps/quickstart-create-first-logic-app-workflow) you will be able to see a very nice tutorial taughing how to do it.
+
+At the end, your Logic App flow should look like that one presented by the Figure below.
+
