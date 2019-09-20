@@ -66,6 +66,7 @@ Where:
 
 There are several ways by which you could publish this code into Azure like, setting up continous integration over Azure DevOps, FTP, and so forth. For test purposes tough, the easiest way to get there is publishing directly from Visual Studio.
 
-
-
 > NOTE: Because the entire flow can take several minutes and considering that Functions running under Consumption Plan are limited to 10 minutes max before it returns time-out, I strongly recommend deploy it into a Function running under a regular hosting plan. [In here](https://docs.microsoft.com/en-us/azure/azure-functions/functions-scale) you can learn more about this constraint.
+
+At the end, you should have a Function App pretty similar to that one presented by the Figure below.
+
