@@ -40,7 +40,7 @@ Create a new Azure Media Services Account (there is a very nice tutorial [in her
 
 After its creation, don't forget to enable the "Streaming Endpoint" for the account or you wouldn't be able to see the actual result of the flow: videos being played.
 
-### Step 3: Logic App creation
+### Step 3: Starter Logic App
 
 As mentioned before, the solution utilizes a logic app to actually listen the events occurring within the storage account and react to those. So, you need to go after it. [In here](https://docs.microsoft.com/en-us/azure/logic-apps/quickstart-create-first-logic-app-workflow) you will be able to see a very nice tutorial taughing how to do it.
 
@@ -64,9 +64,16 @@ Where:
 
 ### Step 4: Publish the function code into Azure
 
-There are several ways by which you could publish this code into Azure like, setting up continous integration over Azure DevOps, FTP, and so forth. For test purposes tough, the easiest way to get there is publishing directly from Visual Studio.
+Actually, there are several ways by which you could publish this code out into Azure like, setting up continous integration over Azure DevOps, FTP, so on and so so forth. For test purposes tough, the easiest way to get there is to web deploy protocol over Visual Studio. This is what I'm actually doing to get it done here.
 
-> NOTE: Because the entire flow can take several minutes and considering that Functions running under Consumption Plan are limited to 10 minutes max before it returns time-out, I strongly recommend deploy it into a Function running under a regular hosting plan. [In here](https://docs.microsoft.com/en-us/azure/azure-functions/functions-scale) you can learn more about this constraint.
+> NOTE: Because the entire processing flow can take several minutes to complete and also, considering that Functions running under Consumption Plan are limited to 10 minutes max before it returns time-out, I strongly recommend you deploy it into a Function running under a regular hosting plan. [In here](https://docs.microsoft.com/en-us/azure/azure-functions/functions-scale) you can learn more about this constraint.
 
-At the end, you should have a Function App pretty similar to that one presented by the Figure below.
+At the end, you should have a Function App pretty similar to that one presented by the Figure below sitting on top of your Azure environment.
 
+![Function published](/images/function-published.png)
+
+### Step 5: Connecting your Azure Media Services account to your Video Index instance
+
+At this point, Azure Media Services and the new version of Video Indexer are two separate services that can work together. It means that you can use Video Indexer features within your existing AMS account to get the job done.
+
+Because we're interested on having the insights extraction as result of the video processing flow, I'm going to bring it together and for this, I need to connect my Video Indexer account with my AMS account. The procedure to get it done is well detailed [in here](https://docs.microsoft.com/en-us/azure/media-services/video-indexer/connect-to-azure).
