@@ -77,3 +77,9 @@ At the end, you should have a Function App pretty similar to that one presented 
 At this point, Azure Media Services and the new version of Video Indexer are two separate services that can work together. It means that you can use Video Indexer features within your existing AMS account to get the job done.
 
 Because we're interested on having the insights extraction as result of the video processing flow, I'm going to bring it together and for this, I need to connect my Video Indexer account with my AMS account. The procedure to get it done is well detailed [in here](https://docs.microsoft.com/en-us/azure/media-services/video-indexer/connect-to-azure).
+
+### Step 6: Video Indexer Logic App
+
+Finally, we're taking advantage of some pre-built actions within the Logic Apps service to help us with the "insights extraction" part. 
+
+Please, go through the process of creating a new Logic App and then, add the following step with the proper configuration within it (as show by the Figures below).
