@@ -70,7 +70,7 @@ Actually, there are several ways by which you could publish this code out into A
 
 At the end, you should have a Function App pretty similar to that one presented by the Figure below sitting on top of your Azure environment.
 
-![Function published](/images/function-published.png)
+![Function published](https://raw.githubusercontent.com/AzureForEducation/demo-videoprocessing/master/images/function-publish.PNG)
 
 ### Step 5: Connecting your Azure Media Services account to your Video Index instance
 
