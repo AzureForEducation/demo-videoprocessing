@@ -82,6 +82,40 @@ Because we're interested on having the insights extraction as result of the vide
 
 Finally, we're taking advantage of some pre-built actions within the Logic Apps service to help us with the "insights extraction" part. 
 
-Please, go through the process of creating a new Logic App and then, add the following step with the proper configuration within it (as show by the Figures below).
+Please, go through the process of creating a new Logic App and then, add the following steps with the proper configuration within it (as show by the Figures below).
 
-![Video Indexer Logic App]()
+![Video Indexer Logic App](https://raw.githubusercontent.com/AzureForEducation/demo-videoprocessing/master/images/logic-app-vi-view.PNG)
+
+The general flow would is:
+
+1. When the activity function called "A_PublishesEncodedAsset" finishes its job, it does call the logic app you just created. The request itself has to bring the two info in the body: "assetId" and "videoFileName". VI will use this two info to uniquely identify the video which insights will be extracted from.
+
+The payload template expected by the HTTP Request Action is that one presented below.
+
+```
+{
+    "properties": {
+        "assetId": {
+            "type": "string"
+        },
+        "videoFileName": {
+            "type": "string"
+        }
+    },
+    "type": "object"
+}
+```
+
+![HTTP Request Action](https://raw.githubusercontent.com/AzureForEducation/demo-videoprocessing/master/images/logic-app-vi-block1.PNG)
+
+2. As outcome of the HTTP Request, a call to "VI Access Token" task is sent. This action will get the authorization needed for us to order the service extract the insights on our behalf.
+
+![VI Access Token](https://raw.githubusercontent.com/AzureForEducation/demo-videoprocessing/master/images/logic-app-vi-block2.PNG)
+
+3. Then, we call the specific routine that has the responsability of performing the extraction itself. Please, note that we're passing the dynamic data received by the "HTTP Request" task and also, the access token we've got on the previous step.
+
+![Upload video and index](https://raw.githubusercontent.com/AzureForEducation/demo-videoprocessing/master/images/logic-app-vi-block3.PNG)
+
+4. The final step refers specifically to a feature which allows us to get specifically video's transcription/caption data. 
+
+![Transcription/Caption Data](https://raw.githubusercontent.com/AzureForEducation/demo-videoprocessing/master/images/logic-app-vi-block4.PNG)
