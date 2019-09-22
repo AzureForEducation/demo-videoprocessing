@@ -83,3 +83,5 @@ Because we're interested on having the insights extraction as result of the vide
 Finally, we're taking advantage of some pre-built actions within the Logic Apps service to help us with the "insights extraction" part. 
 
 Please, go through the process of creating a new Logic App and then, add the following step with the proper configuration within it (as show by the Figures below).
+
+![Video Indexer Logic App]()
