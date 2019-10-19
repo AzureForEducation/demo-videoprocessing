@@ -18,12 +18,13 @@ namespace VideoProcessing
         static readonly string _logicappuri = Environment.GetEnvironmentVariable("LogicAppVideoIndexerFlowURI");
 
         [FunctionName("A_InsightsGenerator")]
-        public static string GeneratesInsights([ActivityTrigger] InitialSetupResult initialSetup, TraceWriter log)
+        public static string GeneratesInsights([ActivityTrigger] AMSVideo amsVideoPublished, TraceWriter log)
         {
             // Building up Json sentence
             dynamic flexibleObj = new ExpandoObject();
-            flexibleObj.assetId = initialSetup.Asset.Id;
-            flexibleObj.videoFileName = initialSetup.Video.VideoFileName;
+            flexibleObj.assetId = amsVideoPublished.Asset.Id;
+            flexibleObj.videoFileName = amsVideoPublished.Video.VideoFileName;
+            flexibleObj.streamingVideoURL = amsVideoPublished.StreamingURL;
             var jsonStr = JsonConvert.SerializeObject(flexibleObj);
 
             try
