@@ -434,7 +434,8 @@ namespace VideoProcessing.Services
 
                 // Create a full URL to the manifest file. Use this for playback
                 // in streaming media clients. 
-                urlForClientStreaming = asset.Uri + manifestFile.Name + "/manifest" + "(format=m3u8-aapl)";
+                urlForClientStreaming = originLocator.Path + manifestFile.Name + "/manifest";
+                //urlForClientStreaming = asset.Uri + manifestFile.Name + "/manifest" + "(format=m3u8-aapl)";
             }
             catch (Exception)
             {
