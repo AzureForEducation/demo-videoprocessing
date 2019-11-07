@@ -145,7 +145,7 @@ namespace VideoProcessing.Services
             await targetBlob.StartCopyAsync(srcBlob);
 
             // Remove source blob after copy is done.
-            sourceBlob.Delete();
+            //sourceBlob.Delete();
             return targetBlob;
         }
 
