@@ -1,0 +1,13 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "AzureWebJobsDashboard": "UseDevelopmentStorage=true",
+    "AMSAADTenantDomain": "",
+    "AMSClientId": "",
+    "AMSClientSecret": "",
+    "AMSRESTAPIEndpoint": "",
+    "StorageAccountConnection": "",
+    "LogicAppVideoIndexerFlowURI": ""
+  }
+}
