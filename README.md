@@ -20,7 +20,7 @@ The proposed architecture can be seen below. In summary, this is what happens wh
 
 3. Under-the-hood ADF does call action functions whereby both the ingestion, encoding, publishing and analytics routines are performed. All these action functions actually do is to call for specific routines provided by AMS and wait for its responses.
 
-![Solution architectural view](https://raw.githubusercontent.com/AzureForEducation/demo-videoprocessing/master/images/Video-Kroton-Arch.png)
+![Solution architectural view](https://raw.githubusercontent.com/AzureForEducation/demo-videoprocessing/master/images/Video-Arch.png)
 
 ## How to run it
 
